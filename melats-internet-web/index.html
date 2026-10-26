@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#24151C" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Melat's Internet">
+<meta name="description" content="Six locks, six little websites, one hidden message.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Melat's Internet</title>
+<style>
+@font-face{font-family:"Figtree";src:url(fonts/Figtree.ttf) format("truetype");font-weight:300 900;font-display:swap}
+@font-face{font-family:"Fraunces";src:url(fonts/Fraunces.ttf) format("truetype");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Fraunces";src:url(fonts/Fraunces-Italic.ttf) format("truetype");font-weight:100 900;font-style:italic;font-display:swap}
+@font-face{font-family:"Monoton";src:url(fonts/Monoton.ttf) format("truetype");font-display:swap}
+@font-face{font-family:"Caveat";src:url(fonts/Caveat.ttf) format("truetype");font-weight:400 700;font-display:swap}
+/* same base the artifact viewer provides */
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0}
+body{font-size:14px;font-family:system-ui,-apple-system,sans-serif;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+html{-webkit-tap-highlight-color:transparent}
+</style>
+
+<style>
+/* Layout: a little browser — sticky chrome (address bar + message slots) over one "website" at a time */
+:root{
+  --bg:#F3E9EC; --chrome:#FFFFFF; --chrome-edge:#E4D2D8; --field:#F5EEF1;
+  --fg:#2B1620; --muted:#7D6470; --accent:#C2185B; --accent-ink:#FFFFFF; --slot:#EBDDE2;
+  --ui:"Figtree",system-ui,sans-serif; --display:"Fraunces",Georgia,serif; --hand:"Caveat",cursive;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#170D12; --chrome:#24151C; --chrome-edge:#3B2530; --field:#1C1016;
+    --fg:#F6E8EE; --muted:#B99AA7; --accent:#F0609A; --accent-ink:#1A0910; --slot:#33202A; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#170D12; --chrome:#24151C; --chrome-edge:#3B2530; --field:#1C1016;
+  --fg:#F6E8EE; --muted:#B99AA7; --accent:#F0609A; --accent-ink:#1A0910; --slot:#33202A; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:16px;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--chrome)}
+button,input{font:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- browser chrome ---------- */
+.chrome{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--chrome);border-bottom:1px solid var(--chrome-edge);
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:10px 10px}
+.bar{max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.navbtn{flex:0 0 38px;height:38px;border-radius:50%;border:none;background:var(--field);color:var(--fg);cursor:pointer;font-size:1.1rem}
+.navbtn:disabled{opacity:.35;cursor:default}
+.addr{flex:1;min-width:0;display:flex;align-items:center;background:var(--field);border:1.5px solid var(--chrome-edge);border-radius:22px;padding:0 6px 0 14px;height:40px}
+.addr input{cursor:default}
+.addr .lock{font-size:.8rem;margin-right:6px;opacity:.7}
+.addr input{flex:1;min-width:0;border:none;background:transparent;color:var(--fg);font-size:1rem;outline:none}
+.addr button{border:none;background:var(--accent);color:var(--accent-ink);border-radius:16px;padding:5px 12px;font-weight:700;font-size:.85rem;cursor:pointer}
+.msg{max-width:640px;margin:8px auto 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.msg .lbl{font-size:.75rem;color:var(--muted);margin-right:2px}
+.slot{min-width:34px;height:28px;padding:0 8px;border-radius:8px;background:var(--slot);color:var(--muted);display:grid;place-items:center;font-weight:800;letter-spacing:.06em;font-size:.9rem;transition:background .4s,color .4s}
+.slot.on{background:var(--accent);color:var(--accent-ink);animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+/* ---------- album modal + photo strips ---------- */
+.modal{position:fixed;inset:0;z-index:40;background:rgba(20,8,14,.72);display:grid;place-items:start center;overflow-y:auto;overscroll-behavior:contain;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:load .3s ease-out}
+.polaroid{width:100%;max-width:400px;margin:auto 0;background:#FFFDF8;color:#2B1620;border-radius:6px;padding:14px 14px 16px;box-shadow:0 20px 50px rgba(0,0,0,.5);transform:rotate(-1.2deg)}
+.polaroid h3{font-family:var(--hand);font-size:2rem;margin:10px 0 0;line-height:1}
+.polaroid .dt{color:#7D6470;font-size:.85rem;margin:2px 0 6px}
+.polaroid p{margin:0 0 12px;line-height:1.5;font-size:.98rem}
+.polaroid button{width:100%;height:46px;border:none;border-radius:10px;background:#1E7A46;color:#fff;font-weight:800;cursor:pointer}
+.strip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip img,.strip video{flex:0 0 78%;max-width:78%;aspect-ratio:3/4;object-fit:cover;border-radius:6px;scroll-snap-align:center;display:block;background:#EADFD6}
+.strip.one img{flex-basis:100%;max-width:100%}
+.swp{font-size:.78rem;color:#7D6470;text-align:center;margin:6px 0 10px}
+.nophoto{aspect-ratio:4/3;border-radius:6px;background:linear-gradient(160deg,#FCE4EE,#F7CFDC);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8A2350}
+.nophoto span{font-size:3.4rem;line-height:1}
+.nophoto p{font-family:var(--hand);font-size:1.5rem;line-height:1.15;margin:8px 0 0}
+.album{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.album img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+
+/* ---------- page frame ---------- */
+.viewport{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 60px}
+.site{max-width:640px;margin:0 auto;border-radius:18px;overflow:hidden;animation:load .45s ease-out}
+@keyframes load{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.site-in{padding:24px 20px 28px}
+.site h1{text-wrap:balance}
+.site p{line-height:1.55;margin:0 0 12px}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* shared reward pieces (sit inside each site) */
+.reward{margin-top:22px;padding-top:20px;border-top:1px dashed currentColor;border-top-color:color-mix(in srgb,currentColor 30%,transparent)}
+.big-letter{font-family:var(--display);font-weight:800;font-size:4.2rem;line-height:1;margin:6px 0 10px;letter-spacing:.04em}
+.wordbox{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.wordbox input{flex:1 1 160px;min-width:0;height:46px;border-radius:12px;border:2px solid currentColor;background:rgba(255,255,255,.9);color:#2B1620;padding:0 14px;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.wordbox button{height:46px;border:none;border-radius:12px;padding:0 18px;font-weight:800;cursor:pointer}
+.wb-note{font-size:.9rem;min-height:1.3em;margin-top:6px}
+.clue{margin-top:20px;border-radius:14px;padding:16px;background:rgba(255,255,255,.9);color:#2B1620}
+.clue .c-k{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#7D6470;margin:0 0 4px}
+.clue .c-t{font-family:var(--display);font-size:1.25rem;line-height:1.3;margin:0 0 8px}
+.clue code{font-family:var(--ui);font-weight:800;background:#FCE4EE;color:#A0124A;padding:2px 8px;border-radius:6px}
+.clue .go{display:inline-block;margin-top:6px;border:none;background:none;color:#A0124A;text-decoration:underline;cursor:pointer;padding:0;font-size:.9rem}
+
+/* ---------- start ---------- */
+.s-start{background:var(--chrome);border:1px solid var(--chrome-edge)}
+.s-start .logo{font-family:var(--display);font-weight:800;font-size:clamp(2.2rem,10vw,3rem);line-height:1;margin:6px 0 14px;color:var(--accent)}
+.s-start .logo i{font-weight:500;color:var(--fg)}
+.locks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 6px}
+.lockt{display:flex;flex-direction:column;align-items:center;gap:6px;border:1.5px solid var(--chrome-edge);background:var(--field);color:var(--fg);
+  border-radius:16px;padding:16px 10px 14px;text-align:center;cursor:pointer;min-width:0}
+.lockt:disabled{cursor:default}
+.lockt svg{width:62px;height:72px;overflow:visible}
+.lockt .body{fill:var(--muted)}
+.lockt .shackle{fill:none;stroke:var(--muted);stroke-width:6;stroke-linecap:round;transform-box:view-box;transform-origin:42px 32px;transition:transform .55s cubic-bezier(.3,1.6,.5,1)}
+.lockt .num{fill:var(--field);font:800 20px var(--ui)}
+.lockt .lt-name{font-weight:800;font-size:.95rem;line-height:1.2}
+.lockt .lt-sub{font-size:.8rem;color:var(--muted);line-height:1.3;min-height:2.6em}
+.lockt.locked{opacity:.5}
+.lockt.ready{border-color:var(--accent);animation:glow 1.6s ease-in-out infinite}
+.lockt.ready .body{fill:var(--accent)} .lockt.ready .shackle{stroke:var(--accent)}
+.lockt.ready .lt-sub{color:var(--fg)}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 0%,transparent)}}
+.lockt.open .shackle,.lockt.opening .shackle{transform:translateY(-13px)}
+.lockt.open{background:color-mix(in srgb,var(--accent) 14%,var(--field));border-color:color-mix(in srgb,var(--accent) 40%,var(--chrome-edge))}
+.lockt.open .body{fill:var(--accent)} .lockt.open .shackle{stroke:var(--accent)}
+.lockt.opening{animation:jiggle .45s ease-in-out}
+.lockt.opening .body{fill:var(--accent)} .lockt.opening .shackle{stroke:var(--accent);transition-delay:.35s}
+@keyframes jiggle{20%{transform:rotate(-6deg)}40%{transform:rotate(6deg)}60%{transform:rotate(-4deg)}80%{transform:rotate(3deg)}}
+.go-btn{display:block;width:100%;margin-top:10px;height:48px;border:none;border-radius:12px;background:#C2185B;color:#fff;font-weight:800;font-size:1rem;cursor:pointer}
+
+/* ---------- lasagna ---------- */
+.s-lasagna{background:#FFF7EC;color:#3A1A10;
+  background-image:linear-gradient(45deg,rgba(198,40,40,.08) 25%,transparent 25%,transparent 75%,rgba(198,40,40,.08) 75%),linear-gradient(45deg,rgba(198,40,40,.08) 25%,transparent 25%,transparent 75%,rgba(198,40,40,.08) 75%);
+  background-size:36px 36px;background-position:0 0,18px 18px}
+.s-lasagna .banner{background:#B3261E;color:#FFF3E0;text-align:center;padding:18px 16px 16px}
+.s-lasagna .banner h1{font-family:var(--display);font-weight:800;font-size:clamp(1.8rem,8vw,2.4rem);margin:0;line-height:1.05}
+.s-lasagna .banner p{margin:6px 0 0;font-size:.9rem;opacity:.9}
+.s-lasagna .site-in{background:rgba(255,247,236,.94)}
+.plates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
+.plate{position:relative;border:3px solid #E9D8C4;border-radius:14px;overflow:hidden;background:#fff;padding:0;cursor:pointer;color:#3A1A10;text-align:center}
+.plate img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.plate span{display:block;font-weight:700;font-size:.85rem;padding:6px 2px}
+.plate .n{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:50%;background:#B3261E;color:#fff;font-weight:800;display:grid;place-items:center;transform:scale(0);transition:transform .2s}
+.plate.picked{border-color:#B3261E}
+.plate.picked .n{transform:scale(1)}
+.s-lasagna .wordbox button{background:#B3261E;color:#fff}
+.s-lasagna .stamp{display:inline-block;border:3px solid #B3261E;color:#B3261E;border-radius:8px;padding:2px 12px;transform:rotate(-4deg);font-weight:800;letter-spacing:.1em;font-size:.85rem}
+
+/* ---------- bowling ---------- */
+.s-bowling{background:#0D0B2A;color:#E8E6FF}
+.s-bowling h1{font-family:"Monoton",var(--display);font-weight:400;font-size:clamp(1.9rem,9vw,2.6rem);color:#7DF9FF;text-shadow:0 0 12px rgba(125,249,255,.7);margin:0 0 10px;line-height:1.1}
+.score{display:flex;justify-content:center;gap:10px;margin:0 0 14px}
+.score div{background:#1C1850;border:1px solid #3B33A0;border-radius:10px;padding:8px 14px;text-align:center;font-size:.8rem;color:#B4AEFF}
+.score b{display:block;font-size:1.5rem;color:#FF7AD9;font-variant-numeric:tabular-nums}
+.lane{position:relative;height:340px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(90deg,#2B1E5C 0 7%,#E7C79A 7% 93%,#2B1E5C 93%);box-shadow:inset 0 0 0 2px #5A4BD1}
+.lane::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 22px,rgba(120,80,40,.10) 22px 23px);pointer-events:none}
+.pin{position:absolute;top:34px;width:34px;height:62px;margin-left:-17px;transition:transform .5s cubic-bezier(.3,1.4,.5,1),opacity .5s;z-index:2}
+.pin::before{content:"";position:absolute;inset:0;background:#FFFDF8;border-radius:50% 50% 40% 40%/30% 30% 70% 70%;box-shadow:inset -4px -4px 0 rgba(0,0,0,.08)}
+.pin::after{content:"";position:absolute;left:4px;right:4px;top:18px;height:5px;background:#E0245E;border-radius:2px}
+.pin.down{transform:translateY(-10px) rotate(70deg);opacity:0}
+.ltr{position:absolute;top:44px;width:44px;height:44px;margin-left:-22px;border-radius:10px;background:#FF7AD9;color:#1A0930;font-weight:800;font-size:1.5rem;display:grid;place-items:center;transform:scale(0);transition:transform .45s .2s cubic-bezier(.3,1.6,.5,1);z-index:1;box-shadow:0 0 18px rgba(255,122,217,.7)}
+.ltr.show{transform:scale(1)}
+.ball{position:absolute;bottom:18px;width:30px;height:30px;margin-left:-15px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8A7BFF,#3B1FB0);z-index:3;box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.ball.roll{transition:bottom .65s cubic-bezier(.4,.1,.6,1)}
+.aim{position:absolute;bottom:0;width:4px;height:60px;margin-left:-2px;background:linear-gradient(transparent,#7DF9FF);box-shadow:0 0 10px #7DF9FF;z-index:2}
+.bowl{display:block;width:100%;margin-top:12px;height:52px;border:none;border-radius:14px;background:#FF7AD9;color:#1A0930;font-weight:800;font-size:1.1rem;cursor:pointer}
+.bowl:disabled{opacity:.5}
+.bnote{text-align:center;min-height:1.5em;margin:10px 0 0;color:#B4AEFF}
+.s-bowling .wordbox button{background:#7DF9FF;color:#0D0B2A}
+
+/* ---------- movienight ---------- */
+.s-movie{background:#2A0A0E;color:#F7E7C6;background-image:radial-gradient(circle at 50% -20%,rgba(255,200,90,.25),transparent 60%)}
+.s-movie h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,9vw,2.6rem);margin:0 0 4px;color:#F5C451;letter-spacing:.02em}
+.s-movie .sub{color:#D9B98A;font-size:.9rem}
+.tix{display:grid;gap:10px;margin:16px 0 18px}
+.tik{display:flex;border:none;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#F5C451;color:#3A1205;text-align:left;transition:transform .15s}
+.tik .m{flex:1;padding:12px 14px}
+.tik .m b{display:block;font-family:var(--display);font-size:1.15rem}
+.tik .m small{font-size:.8rem;opacity:.8}
+.tik .st{width:64px;border-left:2px dashed rgba(58,18,5,.4);display:grid;place-items:center;font-size:1.4rem}
+.tik.sel{transform:scale(1.02);box-shadow:0 0 0 3px #FFF1C9}
+.tik.matched{background:#6A8F4E;color:#F3FFE6;cursor:default}
+.revs{display:grid;gap:8px}
+.rev{border:1.5px solid #6B2A2F;background:#3A1116;color:#F7E7C6;border-radius:10px;padding:12px 14px;text-align:left;cursor:pointer}
+.rev.used{opacity:.35;cursor:default}
+.mnote{min-height:1.4em;color:#F5C451;margin-top:10px}
+.admit{display:flex;align-items:center;gap:14px;background:#F5C451;color:#3A1205;border-radius:12px;padding:14px}
+.admit .big-letter{margin:0;font-size:3.4rem}
+
+/* ---------- missedcalls ---------- */
+.s-calls{background:#14161B;color:#E9ECF2}
+.s-calls h1{font-family:var(--ui);font-weight:800;font-size:1.6rem;margin:0 0 2px}
+.s-calls .sub{color:#8C93A3;font-size:.9rem}
+.draft{background:#1F232B;border-radius:14px;padding:12px 14px;margin:10px 0}
+.draft .d{font-size:.75rem;color:#8C93A3;display:flex;justify-content:space-between}
+.draft p{margin:6px 0 0;font-size:1.05rem}
+.draft .ns{color:#F2777A}
+.ringing{margin:22px 0 0;background:linear-gradient(180deg,#22303F,#152029);border-radius:22px;padding:24px 18px 20px;text-align:center}
+.ringing .av{width:76px;height:76px;border-radius:50%;margin:0 auto 10px;background:#F0609A;display:grid;place-items:center;font-family:var(--display);font-size:2rem;color:#fff;animation:ringpulse 1.4s infinite}
+@keyframes ringpulse{0%{box-shadow:0 0 0 0 rgba(240,96,154,.6)}100%{box-shadow:0 0 0 22px rgba(240,96,154,0)}}
+.ringing h2{margin:0;font-size:1.6rem}
+.ringing .when{color:#8C93A3;font-size:.85rem;margin:2px 0 18px}
+.slide{position:relative;height:58px;border-radius:30px;background:#2E3B48;overflow:hidden}
+.slide span{position:absolute;inset:0;display:grid;place-items:center;color:#A9B3C1;font-size:.95rem;pointer-events:none}
+.slide input{position:absolute;inset:0;width:100%;height:100%;margin:0;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+.slide input::-webkit-slider-thumb{-webkit-appearance:none;width:58px;height:58px;border-radius:50%;background:#34C759;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.slide input::-moz-range-thumb{width:58px;height:58px;border:none;border-radius:50%;background:#34C759}
+.s-calls .big-letter{color:#F0609A}
+.s-calls .wordbox button{background:#34C759;color:#0B2414}
+
+/* ---------- melatpedia ---------- */
+.s-wiki{background:#FBFAF7;color:#202122;font-family:Georgia,"Times New Roman",serif}
+.s-wiki h1{font-family:Georgia,serif;font-weight:400;font-size:2rem;border-bottom:1px solid #C8CCD1;padding-bottom:4px;margin:0 0 4px}
+.s-wiki .from{font-size:.85rem;color:#54595D;margin-bottom:14px}
+.s-wiki a,.s-wiki .lnk{color:#3366CC}
+.infobox{border:1px solid #A2A9B1;background:#F8F9FA;padding:10px;margin:0 0 14px;font-size:.92rem}
+.infobox .cap{text-align:center;font-weight:700;font-size:1.1rem;margin-bottom:8px}
+.infobox img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.flowers{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.flowers figure{margin:0}
+.flowers img{aspect-ratio:3/4}
+.flowers figcaption{text-align:center;font-size:.75rem;color:#54595D;margin-top:3px}
+.infobox .ic{text-align:center;font-size:.8rem;color:#54595D;margin:4px 0 8px}
+.infobox table{width:100%;border-collapse:collapse}
+.infobox th{text-align:left;vertical-align:top;padding:5px 6px 5px 0;width:38%;font-weight:700}
+.infobox td{padding:5px 0}
+.blank{width:100%;min-width:0;border:none;border-bottom:2px dotted #3366CC;background:transparent;font:inherit;color:#202122;padding:2px 0;outline:none}
+.blank.ok{border-bottom:2px solid #14866D;color:#14866D;font-weight:700}
+.citation{font-size:.7em;vertical-align:super;color:#3366CC}
+.tiles{display:flex;gap:8px;margin:8px 0}
+.tiles span{width:48px;height:56px;border:2px dashed #A2A9B1;border-radius:6px;display:grid;place-items:center;font-size:1.7rem;font-weight:700;color:transparent;font-family:var(--ui)}
+.tiles span.on{border:2px solid #14866D;background:#E6F4EF;color:#14866D;animation:pop .45s}
+.wnote{font-size:.9rem;color:#B32424;min-height:1.3em;font-family:var(--ui)}
+
+/* ---------- ridehome ---------- */
+.s-ride{background:#F2F5EC;color:#1F2A1C}
+.s-ride h1{font-family:var(--ui);font-weight:800;font-size:1.7rem;margin:0}
+.s-ride .sub{color:#5B6B55;font-size:.9rem}
+.mapbox{position:relative;width:100%;max-width:100%;aspect-ratio:100/125;border-radius:16px;overflow:hidden;background:#E3EAD8;margin:14px 0 8px}
+.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
+.stop{position:absolute;transform:translate(-50%,-100%);border:none;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.stop .pinhead{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#5B6B55;display:grid;place-items:center;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.stop .pinhead i{transform:rotate(45deg);font-style:normal;color:#fff;font-weight:800;font-size:.8rem}
+.stop .nm{background:#fff;color:#1F2A1C;border-radius:8px;padding:2px 7px;font-size:.72rem;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.15);margin-top:6px}
+.stop.done .pinhead{background:#E0245E}
+.stop.home .pinhead{background:#1E7A46}
+.rnote{min-height:1.4em;color:#A0124A;font-size:.95rem}
+.s-ride .big-letter{color:#1E7A46}
+.s-ride .wordbox button{background:#1E7A46;color:#fff}
+
+/* ---------- final ---------- */
+.s-final{background:#2A0E1A;color:#FCE9F1;text-align:center;
+  background-image:radial-gradient(circle at 50% 30%,rgba(240,96,154,.35),transparent 65%)}
+.s-final .site-in{padding:40px 20px 36px}
+.words{display:flex;flex-direction:column;align-items:center;gap:2px;margin:6px 0 26px}
+.words span{font-family:var(--display);font-weight:800;line-height:1;letter-spacing:.02em;opacity:0;transform:translateY(16px);animation:wordin .9s ease-out forwards}
+.words .w1{font-size:clamp(3rem,16vw,4.6rem)}
+.words .w2{font-size:clamp(3.6rem,20vw,6rem);color:#F0609A}
+.words .w3{font-size:clamp(3rem,16vw,4.6rem)}
+.words .w4{font-size:clamp(3rem,15vw,4.4rem);font-style:italic;font-weight:500;color:#FFD1E3}
+@keyframes wordin{to{opacity:1;transform:none}}
+.note{background:#FFF6EE;color:#2E1A22;border-radius:6px;padding:22px 20px 20px;text-align:left;font-family:var(--hand);font-size:1.55rem;line-height:1.35;transform:rotate(-1deg);box-shadow:0 14px 30px rgba(0,0,0,.35);opacity:0;animation:wordin 1s ease-out forwards}
+.note p{margin:0 0 12px}
+.note .sig{text-align:right;font-weight:700;margin:0}
+.again{margin-top:22px;background:none;border:none;color:#E7B6CB;text-decoration:underline;cursor:pointer;font-size:.9rem}
+
+/* ---------- 404 / locked ---------- */
+.s-err{background:var(--chrome);border:1px solid var(--chrome-edge);text-align:center}
+.s-err .big{font-size:3rem;margin:6px 0}
+.s-err .lnk{border:none;background:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:1rem}
+
+.petal{position:fixed;top:-30px;pointer-events:none;z-index:30;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(300deg)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}.words span,.note{opacity:1;transform:none}}
+</style>
+
+</head>
+<body>
+<header class="chrome">
+  <form class="bar" id="addrForm" autocomplete="off">
+    <button type="button" class="navbtn" id="back" aria-label="Back">←</button>
+    <label class="addr">
+      <span class="lock" aria-hidden="true">🔒</span>
+      <input id="addr" name="addr" type="text" readonly tabindex="-1" aria-label="Current website">
+    </label>
+  </form>
+  <div class="msg" aria-label="Your hidden message so far">
+    <span class="lbl">Message:</span>
+    <span class="slot" id="slot-0">?</span>
+    <span class="slot" id="slot-1">?</span>
+    <span class="slot" id="slot-2">?</span>
+    <span class="slot" id="slot-3">?</span>
+  </div>
+</header>
+
+<main class="viewport"><div id="page"></div></main>
+
+<script>
+/* ===== sites, in the order she unlocks them ===== */
+const SITES = [
+  {key:'start',       url:'start.site'},
+  {key:'melatpedia',  url:'melatpedia.site'},
+  {key:'ridehome',    url:'ridehome.site'},
+  {key:'movienight',  url:'movienight.site'},
+  {key:'missedcalls', url:'missedcalls.site'},
+  {key:'lasagna',     url:'lasagnaclub.site'},
+  {key:'bowling',     url:'bowling.site'},
+  {key:'final',       url:'i.love.you.melat'}
+];
+const idxOf = k => SITES.findIndex(s=>s.key===k);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let S = { v:3, unlocked:1, done:{}, opened:{}, words:{}, pieces:{} };
+try{ const saved = JSON.parse(localStorage.getItem('melatnet')||'null'); if(saved && saved.v===3) S = saved; }catch(e){}
+function save(){ try{ localStorage.setItem('melatnet', JSON.stringify(S)); }catch(e){} }
+
+const page = document.getElementById('page');
+const addr = document.getElementById('addr');
+const backBtn = document.getElementById('back');
+let current = 'start', history = [], pendingNext = null, clueTimer = null;
+
+const FOUND_ORDER=['MELAT','YOU','I','LOVE'], SENTENCE=['I','LOVE','YOU','MELAT'];
+function paintSlots(final){
+  const list = final ? SENTENCE : FOUND_ORDER.filter(w=>S.words[w]);
+  for(let i=0;i<4;i++){ const el=document.getElementById('slot-'+i), w=list[i];
+    if(el.textContent!==(w||'?')){ el.textContent=w||'?'; el.classList.toggle('on',!!w); if(w){ el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); } } }
+}
+function buzz(p){ if(navigator.vibrate){ try{ navigator.vibrate(p||30); }catch(e){} } }
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+/* ===== navigation ===== */
+function go(key, push=true){
+  const i = idxOf(key);
+  if(push && current!==key) history.push(current);
+  current = key;
+  addr.value = SITES[i].url;
+  backBtn.disabled = history.length===0;
+  clearTimeout(clueTimer);
+  if(i > S.unlocked) return renderLocked(SITES[i].url);
+  if(key!=='final') paintSlots();
+  RENDER[key]();
+  window.scrollTo({top:0,behavior:'auto'});
+}
+backBtn.onclick = ()=>{ if(history.length){ const k=history.pop(); go(k,false); backBtn.disabled = history.length===0; } };
+
+document.getElementById('addrForm').addEventListener('submit', e=>e.preventDefault());
+
+function renderLocked(url){
+  page.innerHTML = `<section class="site s-err"><div class="site-in">
+    <p class="big">🔒</p><h1 style="font-family:var(--display);margin:0 0 8px">${url} is still locked</h1>
+    <p>Open the locks in order. Finish the one you're on first.</p>
+    <button class="lnk" id="backto">Back to the locks</button></div></section>`;
+  document.getElementById('backto').onclick = ()=>go('start');
+}
+function render404(v){
+  page.innerHTML = `<section class="site s-err"><div class="site-in">
+    <p class="big">🤔</p><h1 style="font-family:var(--display);margin:0 0 8px">That site isn't on Melat's Internet</h1>
+    <p>Nothing lives at <b>${v.replace(/[<>&"]/g,'')}</b>. Check the clue and try the address again.</p>
+    ${pendingNext?`<button class="lnk" id="takeme">Take me to ${SITES[idxOf(pendingNext)].url}</button><br><br>`:''}
+    <button class="lnk" id="backto">Go back</button></div></section>`;
+  document.getElementById('backto').onclick = ()=>backBtn.click();
+  const t=document.getElementById('takeme'); if(t) t.onclick=()=>go(pendingNext);
+}
+
+/* ===== shared pieces ===== */
+function clueHTML(nextKey, text){
+  return `<div class="clue"><p class="c-k">Lock ${idxOf(nextKey)} is ready</p><p class="c-t">${text}</p>
+    <button class="go-btn" id="takeme">Back to the locks 🔐</button></div>`;
+}
+function armClue(nextKey){
+  pendingNext = nextKey;
+  if(S.unlocked < idxOf(nextKey)){ S.unlocked = idxOf(nextKey); save(); }
+  const b=document.getElementById('takeme'); if(!b) return;
+  b.onclick=()=>go('start');
+}
+function wordHTML(word, prompt){
+  return `<div class="wb" id="wb-${word}"><p style="margin:0"><b>${prompt}</b></p>
+    <form class="wordbox" id="wf-${word}"><input id="w-${word}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type the word"><button type="submit">Add to message</button></form>
+    <p class="wb-note" id="wn-${word}"></p></div>`;
+}
+function bindWord(word, after){
+  const f=document.getElementById('wf-'+word); if(!f) return;
+  const inp=document.getElementById('w-'+word);
+  let tries=0;
+  f.addEventListener('submit',e=>{
+    e.preventDefault();
+    if(inp.value.trim().toUpperCase().replace(/[^A-Z]/g,'')===word){
+      S.words[word]=true; save(); paintSlots(); buzz([30,60,30]);
+      document.getElementById('wb-'+word).innerHTML = `<p style="margin:0;font-weight:700">✓ “${word}” is now in your message. Look at the top. ↑</p>`;
+      after();
+    } else {
+      tries++; shake(f);
+      document.getElementById('wn-'+word).textContent = tries<2 ? "Not quite. Look at the letters you found." : `Psst… it's “${word}”.`;
+    }
+  });
+}
+
+/* ===== the sites ===== */
+const RENDER = {
+
+start(){
+  const HINT={melatpedia:"An encyclopedia about my favorite person 📖",ridehome:"Every date ends the same way 🚗",movienight:"Three movies, one we understood 🎬",
+    missedcalls:"The two months we didn't talk 📞",lasagna:"A fan club with one member 🍝",bowling:"Somewhere we're tied, 1 to 1 🎳"};
+  const NAME={melatpedia:"Melatpedia",ridehome:"Ride Home",movienight:"Popcorn Reviews",missedcalls:"Drafts",lasagna:"Lasagna Fan Club",bowling:"Tie Breaker Lanes"};
+  const list = SITES.slice(1,7);
+  const state = s=>{ const i=idxOf(s.key); if(S.done[s.key]) return 'done'; if(S.opened[s.key]) return 'inprog'; if(i<=S.unlocked) return 'ready'; return 'locked'; };
+  const tiles = list.map((s,n)=>{ const st=state(s);
+    const cls = st==='done'||st==='inprog' ? 'open' : st;
+    const name = st==='locked' ? `Lock ${n+1}` : (st==='ready' ? `Lock ${n+1}` : NAME[s.key]);
+    const sub = st==='done' ? '✓ Solved' : st==='inprog' ? 'Unlocked · keep going' : st==='ready' ? HINT[s.key]+'<br><b>Tap to unlock</b>' : 'Locked';
+    return `<button class="lockt ${cls}" data-k="${s.key}" ${st==='locked'?'disabled':''} aria-label="${name}: ${sub.replace(/<[^>]+>/g,' ')}">
+      <svg viewBox="0 0 60 70" aria-hidden="true"><path class="shackle" d="M18 32 V20 a12 12 0 0 1 24 0 V32"/><rect class="body" x="8" y="30" width="44" height="36" rx="8"/><text class="num" x="30" y="55" text-anchor="middle">${n+1}</text></svg>
+      <span class="lt-name">${name}</span><span class="lt-sub">${sub}</span></button>`; }).join('');
+  const allDone = list.every(s=>S.done[s.key]);
+  page.innerHTML = `<section class="site s-start"><div class="site-in">
+    <p class="logo">Melat's <i>Internet</i></p>
+    <p>Hi Melu. I hid a message for you behind six locks. Each lock opens a little website made only for you.</p>
+    <p>Solve the challenge on each site to find letters, then type the word they make. It goes into the message bar at the top. Four words in total. No peeking at the end.</p>
+    <div class="locks">${tiles}</div>
+    ${allDone ? `<button class="go-btn" id="fin">Read the whole message ❤️</button>` : ''}
+    ${Object.keys(S.done).length||Object.keys(S.words).length||Object.keys(S.opened).length?`<p style="margin:18px 0 0;text-align:center"><button class="go" id="reset" style="color:var(--muted);background:none;border:none;text-decoration:underline;cursor:pointer;font-size:.85rem">Start over from the beginning</button></p>`:''}
+  </div></section>`;
+  const rs=document.getElementById('reset'); if(rs) rs.onclick=()=>{ S={v:3,unlocked:1,done:{},opened:{},words:{},pieces:{}}; save(); paintSlots(); history=[]; pendingNext=null; go('start',false); };
+  const fin=document.getElementById('fin'); if(fin) fin.onclick=()=>{ S.unlocked=idxOf('final'); save(); go('final'); };
+  page.querySelectorAll('.lockt:not([disabled])').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;
+    if(b.classList.contains('ready')){
+      b.classList.remove('ready'); b.classList.add('opening'); buzz([20,60,40]);
+      b.querySelector('.lt-sub').innerHTML='Unlocked! 🔓';
+      setTimeout(()=>{ S.opened[k]=true; save(); go(k); }, reduced?150:1100);
+    } else go(k);
+  });
+},
+
+melatpedia(){
+  const F=[
+    {id:'f1',q:'Nickname',a:['melu','meluye'],h:'What do I call you most? It starts with Mel…'},
+    {id:'f2',q:'First date place',a:['fabrica','fabrika'],h:'The place with the green chairs. Starts with F.'},
+    {id:'f3',q:'Late for ____ hours',a:['1hour','onehour','anhour','1','one','1hr','anhr','onehr','1hours','onehours'],h:'Type a number. Count the hours, Melu. 😄'}
+  ];
+  const shown={f1:'Melu',f2:'Fabrica',f3:'1'};
+  page.innerHTML = `<section class="site s-wiki"><div class="site-in">
+    <h1>Melat</h1><p class="from">From Melatpedia, the encyclopedia written by someone who is clearly biased</p>
+    <aside class="infobox"><div class="cap">Melat</div>
+      <div class="flowers"><figure><img src="media/bella-bouquet.jpg" alt="A bouquet of pink roses"><figcaption>Pink roses · Oct 4</figcaption></figure><figure><img src="media/lavie-roses.jpg" alt="A bouquet of red roses"><figcaption>Red roses · Oct 21</figcaption></figure></div>
+      <p class="ic">Flowers she received. Her favorites: pink roses and lilies.</p>
+      <table>
+        ${F.map(f=>`<tr><th>${f.q}</th><td><input class="blank" id="${f.id}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${f.q}"></td></tr>`).join('')}
+        <tr><th>Known for</th><td>Her eyes, her smile, her charm, her personality</td></tr>
+        <tr><th>Bowling record</th><td>1 win, 1 loss<span class="citation">[citation needed]</span></td></tr>
+      </table></aside>
+    <p><b>Melat</b> is a person known for making ordinary places feel worth remembering.<span class="citation">[1]</span> Some of this article is missing. <b>Fill in the three blanks in the box above.</b></p>
+    <div class="tiles"><span id="t0">M</span><span id="t1">E</span><span id="t2">L</span></div>
+    <p class="wnote" id="wnote"></p><div id="rew"></div></div></section>`;
+  const reward=()=>{
+    [0,1,2].forEach(i=>document.getElementById('t'+i).classList.add('on'));
+    document.getElementById('rew').innerHTML = `<div style="font-family:var(--ui)"><p style="margin-top:6px">Article complete. Three letters unlocked: <b>M E L…</b></p>
+      <p>The last two letters are waiting on the way home.</p>
+      ${clueHTML('ridehome',"Every date ends the same way: I take you home. 🚗")}</div>`;
+    S.pieces.MEL=true; save(); armClue('ridehome');
+  };
+  if(S.done.melatpedia){ F.forEach(f=>{const el=document.getElementById(f.id); el.value=shown[f.id]; el.classList.add('ok'); el.disabled=true;}); return reward(); }
+  const ok={}, fails={};
+  F.forEach((f,i)=>{
+    const el=document.getElementById(f.id);
+    const test=()=>{
+      if(ok[f.id]) return;
+      const v=el.value.toLowerCase().replace(/[^a-z0-9]/g,'');
+      if(!v) return;
+      if(f.a.includes(v)){ ok[f.id]=true; el.classList.add('ok'); el.disabled=true; document.getElementById('t'+i).classList.add('on'); buzz(20); document.getElementById('wnote').textContent='';
+        if(Object.keys(ok).length===3){ S.done.melatpedia=true; save(); setTimeout(reward,400); } }
+      else { fails[f.id]=(fails[f.id]||0)+1; document.getElementById('wnote').textContent = fails[f.id]>=2 ? 'Hint: '+f.h : 'That edit was reverted by the editor. Try again.'; }
+    };
+    el.addEventListener('change',test);
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); test(); } });
+  });
+},
+
+ridehome(){
+  const ST=[
+    {n:'Fabrica',x:20,y:22,d:'May 2, 2026 · Date 1',ph:['fabrica-table','fabrica-chair','fabrica-chair2','fabrica-glasses','chanoly'],t:[
+      "Our very first date. I sat at that green table for a whole hour, staring at the empty chair across from me. Yes, you were one hour late. 😄 And somehow, the moment you sat down, I forgot I'd been waiting at all.",
+      "We talked about ourselves for hours, deeper than I ever expected on a first date. Then we went to Chanoly to eat, took a long walk afterwards, and had the hardest time finding a ride home. The whole city was against us that night. 😁",
+      "Then on May 16 came our first movie at Gast: Devil Wears Prada 2, without either of us ever seeing the first one. We walked out the most confused people in that cinema. And that night, for the first time, I walked you home."
+    ]},
+    {n:'Simple Bistro',x:72,y:16,d:'June 20, 2026 · Date 3',ph:['bistro-burger','bistro-window'],t:[
+      "Our third date started at Gast with our first bowling game. I won that one, which I will keep mentioning for as long as I live. 🎳 Honestly though, I was watching you more than the pins.",
+      "Then we sat by the window at Simple Bistro with burgers and a cold Coke while the rain hit the glass and the city lights came on. One of those evenings I didn't want to end."
+    ]},
+    {n:'Century',x:80,y:52,d:'June 24, 2026 · Date 4',ph:['century'],t:[
+      "A movie at Century that neither of us understood. Not even a little. 😂 Two movie dates, two confused walk-outs.",
+      "It was also our last date before the quiet months. I didn't get everything right back then. I'm still learning, and I'm learning with you.",
+      "Then came two long months apart. I kept myself busy with my new job and told everyone I was fine. I wasn't. And then on September 3, my phone rang, and it was you. I've never been so happy to hear someone's voice."
+    ]},
+    {n:'Keteme',x:42,y:44,d:'September 21, 2026 · Date 5',ph:['keteme-story','keteme-table'],t:[
+      "After that call, you told me you wanted to take things seriously this time. Keteme was our first date after that, and I brought you roses. 🌹",
+      "Everything felt different. No more awkwardness, no more guessing. We were closer than we had ever been. Pizza, and the first of my three lasagnas. 🍝",
+      "And on the ride home, when I hugged you, you leaned on me. It was the first time we were that close, and I still think about that moment."
+    ]},
+    {n:'Bella Pasta',x:22,y:74,d:'October 4, 2026 · Date 6',ph:['bella-pasta','bella-table','bella-bouquet'],t:[
+      "On September 30, I turned our story into a case file and asked you something big. You gave me an honest answer: you want us to be in love first. I understood completely, and I respected you even more for it.",
+      "Then came Bella Pasta, with a big bouquet of pink roses for you. We both loved that place. We talked about everything, and I had lasagna number two. 🍝",
+      "Then I took you home. When you lay your head on my shoulder on the ride, everything goes quiet in the best way. I feel so peaceful in those moments. That's my favorite kind of peace."
+    ]},
+    {n:"Duna's",x:62,y:86,d:'October 14, 2026 · Date 8',ph:['dunas-table','dunas-food'],t:[
+      "On October 10, we gave movie dates one more chance at Gast, and this time we actually enjoyed it. Third time's the charm. 🎬 Then I took you home after a really great day.",
+      "Then on October 14, we went back to Gast for a bowling rematch. I won the first time, you won this time, so now we're officially tied. 😁 It was so much fun.",
+      "Afterwards we took a walk and sat down for dinner at Duna's. We talked a lot and stared at each other even more. 😁 And I ordered lasagna for the third date in a row. 🍝 (I have a question about that. You'll find it at the Lasagna Fan Club.)"
+    ]}
+    ,{n:'La Vie en Rose',x:36,y:104,d:'October 21, 2026 · Date 9',ph:['lavie-roses','lavie-outside','lavie-food','lavie-inside'],t:[
+      "On October 21, I picked you up from home, just like I promised I always would, and we went to La Vie en Rose. White arches glowing in the dark, and a quiet table inside just before 8 PM.",
+      "I brought you flowers again, but this time I tried something different: red roses. 🌹 I know your favorites are pink roses and lilies, and I'll never forget that. I just wanted you to have red ones at least once.",
+      "I had fish, you had chicken, and just like that the lasagna streak is officially over. 😁 Three dates, three lasagnas, and then we both decided to be brave. Add two bright strawberry drinks and some garlic bread, and it was perfect.",
+      "We talked deeply again, the kind of talking where time disappears, and we had such a good time. Then I took you home. Every date with you ends the same way, and I hope it always does."
+    ]}
+  ];
+  const HOME={x:84,y:112};
+  const shuffled=[3,0,6,5,1,4,2];
+  page.innerHTML = `<section class="site s-ride"><div class="site-in">
+    <h1>Ride Home</h1><p class="sub">Pickup: Melat's home. Frequency: always.</p>
+    <p style="margin-top:12px"><b>Retrace our dates. Tap the places in the order we went, from the first date to the latest.</b> Each one opens a little photo memory.</p>
+    <div class="mapbox" id="map">
+      <svg viewBox="0 0 100 125" aria-hidden="true">
+        <rect width="100" height="125" fill="#E3EAD8"/>
+        <path d="M0 35 H100 M0 65 H100 M0 98 H100 M30 0 V125 M58 0 V125 M88 0 V125" stroke="#FFFFFF" stroke-width="3.2" fill="none"/>
+        <path d="M0 10 Q50 30 100 5 M10 125 Q40 80 100 120" stroke="#F6F2E6" stroke-width="2" fill="none"/>
+        <circle cx="66" cy="30" r="7" fill="#CFDDBF"/><circle cx="12" cy="52" r="6" fill="#CFDDBF"/>
+        <polyline id="route" points="" fill="none" stroke="#E0245E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 2"/>
+      </svg>
+      ${shuffled.map(i=>{const s=ST[i];return `<button class="stop" data-i="${i}" style="left:${s.x}%;top:${s.y/125*100}%"><span class="pinhead"><i></i></span><span class="nm">${s.n}</span></button>`;}).join('')}
+      <button class="stop home" id="home" hidden style="left:${HOME.x}%;top:${HOME.y/125*100}%"><span class="pinhead"><i>🏠</i></span><span class="nm">Your home</span></button>
+    </div>
+    <p class="rnote" id="rnote"></p><div id="rew"></div></div></section>`;
+  const route=document.getElementById('route'), pts=[];
+  const add=p=>{ pts.push(p.x+','+p.y); route.setAttribute('points',pts.join(' ')); };
+  const memory=(s,num,onClose)=>{
+    const m=document.createElement('div'); m.className='modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-label',s.n);
+    m.innerHTML=`<div class="polaroid">${s.ph.length?`<div class="strip${s.ph.length===1?' one':''}">${s.ph.map(f=>`<img src="media/${f}.jpg" alt="${s.n}">`).join('')}</div>`:`<div class="nophoto"><span>🌹</span><p>No photos from this one.<br>We were too busy talking.</p></div>`}
+      ${s.ph.length>1?`<p class="swp">Swipe for more · ${s.ph.length} photos</p>`:''}
+      <h3>${num}. ${s.n}</h3><p class="dt">${s.d}</p>${s.t.map(x=>`<p>${x}</p>`).join('')}<button>Keep driving 🚗</button></div>`;
+    document.body.appendChild(m);
+    const close=()=>{ m.remove(); if(onClose) onClose(); };
+    m.querySelector('button').onclick=close; m.querySelector('button').focus({preventScroll:true});
+    m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  };
+  const album=()=>`<p style="margin:16px 0 0"><b>Our album so far</b></p><div class="album">${ST.flatMap(s=>s.ph).map(f=>`<img src="media/${f}.jpg" alt="" loading="lazy">`).join('')}</div>`;
+  const reward=()=>{
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      <p>And just like every date, the ride ends at your door. Waiting there:</p>
+      <p class="big-letter">AT</p>
+      <p>Add it to the letters from Melatpedia, M E L:</p>
+      ${S.words.MELAT?'':wordHTML('MELAT','MEL + AT =')}
+      <div id="clue6">${S.words.MELAT?clueHTML('movienight',"Three movie dates. We understood exactly one. 🎬"):''}</div>${album()}</div>`;
+    if(S.words.MELAT) armClue('movienight');
+    else bindWord('MELAT',()=>{ document.getElementById('clue6').innerHTML=clueHTML('movienight',"Three movie dates. We understood exactly one. 🎬"); armClue('movienight'); });
+  };
+  if(S.done.ridehome){ ST.forEach(add); add(HOME); page.querySelectorAll('.stop').forEach(b=>b.classList.add('done')); page.querySelectorAll('.stop[data-i]').forEach(b=>{ const i=+b.dataset.i; b.querySelector('i').textContent=i+1; b.onclick=()=>memory(ST[i],i+1); }); document.getElementById('home').hidden=false; return reward(); }
+  let n=0, fails=0;
+  page.querySelectorAll('.stop[data-i]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;
+    if(b.classList.contains('done')) return memory(ST[i],i+1);
+    if(i===n){ b.classList.add('done'); b.querySelector('i').textContent=n+1; add(ST[i]); n++; fails=0; buzz(15);
+      document.getElementById('rnote').textContent='';
+      memory(ST[i], n, ()=>{ if(n===ST.length){ document.getElementById('home').hidden=false; document.getElementById('rnote').textContent='Now take me home. 🏠'; } }); }
+    else { fails++; shake(b); document.getElementById('rnote').textContent = fails>=2 ? `Next stop is ${ST[n].n}.` : "That's not the next stop. 🙂"; }
+  });
+  document.getElementById('home').onclick=e=>{ add(HOME); e.currentTarget.classList.add('done'); S.done.ridehome=true; save(); buzz([30,60,30]); setTimeout(reward,400); };
+},
+
+movienight(){
+  const T=[{k:'a',d:'May 16',p:'Gast',e:'🎬'},{k:'b',d:'June 24',p:'Century',e:'🍿'},{k:'c',d:'October 10',p:'Gast',e:'🎟️'}];
+  const R=[{k:'b',t:'“We understood nothing at all. Not even a little.”'},{k:'c',t:'“We actually enjoyed it! Third time’s the charm.” 🎉'},{k:'a',t:'“We watched part 2 without ever seeing part 1.”'}];
+  page.innerHTML = `<section class="site s-movie"><div class="site-in">
+    <h1>Popcorn Reviews</h1><p class="sub">Honest reviews from two people who rarely understand the movie.</p>
+    <div class="strip one" style="margin-top:14px"><img src="media/century.jpg" alt="A cinema screen at Century" style="aspect-ratio:16/10"></div>
+    <p class="swp" style="color:#D9B98A">Evidence from June 24. We still don't know what this movie was about.</p>
+    <p><b>Tap a ticket, then tap the review that belongs to it.</b></p>
+    <div class="tix">${T.map(t=>`<button class="tik" data-k="${t.k}"><span class="m"><b>${t.d}</b><small>${t.p} · Admit two</small></span><span class="st">${t.e}</span></button>`).join('')}</div>
+    <div class="revs">${R.map(r=>`<button class="rev" data-k="${r.k}">${r.t}</button>`).join('')}</div>
+    <p class="mnote" id="mnote"></p><div id="rew"></div></div></section>`;
+  const reward=()=>{
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      <div class="admit"><p class="big-letter">YO</p><p style="margin:0">Your three tickets fold together into half of a word.</p></div>
+      <p style="margin-top:14px">The other half is somewhere quieter.</p>
+      ${clueHTML('missedcalls',"The two months we didn't talk. 📞")}</div>`;
+    S.pieces.YO=true; save(); armClue('missedcalls');
+  };
+  if(S.done.movienight){ page.querySelectorAll('.tik').forEach(t=>t.classList.add('matched')); page.querySelectorAll('.rev').forEach(r=>r.classList.add('used')); return reward(); }
+  let sel=null, matched=0;
+  page.querySelectorAll('.tik').forEach(t=>t.onclick=()=>{ if(t.classList.contains('matched')) return; page.querySelectorAll('.tik').forEach(x=>x.classList.remove('sel')); t.classList.add('sel'); sel=t; document.getElementById('mnote').textContent='Now tap its review.'; });
+  page.querySelectorAll('.rev').forEach(r=>r.onclick=()=>{
+    if(r.classList.contains('used')) return;
+    if(!sel){ document.getElementById('mnote').textContent='Tap a ticket first.'; return; }
+    if(sel.dataset.k===r.dataset.k){
+      sel.classList.remove('sel'); sel.classList.add('matched'); sel.querySelector('.st').textContent='✓'; r.classList.add('used'); sel=null; matched++; buzz(20);
+      document.getElementById('mnote').textContent = matched<3 ? 'Exactly how I remember it.' : 'All three reviews match.';
+      if(matched===3){ S.done.movienight=true; save(); setTimeout(reward,500); }
+    } else { shake(r); document.getElementById('mnote').textContent="Hmm, that's not how I remember that night."; }
+  });
+},
+
+missedcalls(){
+  page.innerHTML = `<section class="site s-calls"><div class="site-in">
+    <h1>Drafts</h1><p class="sub">Typed between July and September. Never sent.</p>
+    <div class="draft"><div class="d"><span>To: Melu</span><span class="ns">Not sent</span></div><p>I almost texted you today.</p></div>
+    <div class="draft"><div class="d"><span>To: Melu</span><span class="ns">Not sent</span></div><p>Work keeps me busy. I tell everyone I'm fine.</p></div>
+    <div class="draft"><div class="d"><span>To: Melu</span><span class="ns">Not sent</span></div><p>I miss your voice.</p></div>
+    <div class="ringing" id="ring"><div class="av">M</div><h2>Melu</h2><p class="when">Incoming call · September 3, 2026</p>
+      <div class="slide"><span>slide to answer →</span><input type="range" id="answer" min="0" max="100" value="0" aria-label="Slide to answer the call"></div></div>
+    <div id="rew"></div></div></section>`;
+  const reward=()=>{
+    document.getElementById('ring').innerHTML = `<div class="av" style="animation:none;background:#34C759">M</div><h2>Melu</h2><p class="when" style="margin-bottom:0">Call connected · the best call of my year</p>`;
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      <p>Two months of drafts, and then I finally heard your voice. The call left one letter behind:</p>
+      <p class="big-letter">U</p>
+      <p>Put it together with the half-word from the movie tickets:</p>
+      ${S.words.YOU?'':wordHTML('YOU','YO + U =')}
+      <div id="clue4">${S.words.YOU?clueHTML('lasagna',"A fan club with exactly one member. 🍝"):''}</div></div>`;
+    if(S.words.YOU) armClue('lasagna');
+    else bindWord('YOU',()=>{ document.getElementById('clue4').innerHTML=clueHTML('lasagna',"A fan club with exactly one member. 🍝"); armClue('lasagna'); });
+  };
+  if(S.done.missedcalls) return reward();
+  const sl=document.getElementById('answer');
+  sl.addEventListener('input',()=>{ if(+sl.value>=88 && !S.done.missedcalls){ S.done.missedcalls=true; save(); buzz([40,80,40]); reward(); } });
+  sl.addEventListener('change',()=>{ if(+sl.value<88) sl.value=0; });
+},
+
+lasagna(){
+  const plates = [
+    {k:'dunas',  src:'media/dunas-food.jpg',  n:"Duna's"},
+    {k:'keteme', src:'media/keteme-table.jpg',n:'Keteme'},
+    {k:'bella',  src:'media/bella-table.jpg', n:'Bella Pasta'}
+  ];
+  const ORDER = ['keteme','bella','dunas'];
+  page.innerHTML = `<section class="site s-lasagna">
+    <div class="banner"><h1>The Lasagna Fan Club</h1><p>Founded 2026 · Members: 1 · Applicants: 1</p></div>
+    <div class="site-in" id="body">
+      <p>Three dates. Three lasagnas. Our founder ordered one every single time. 😄</p>
+      <p><b>To join, tap the lasagnas in the order he ate them.</b></p>
+      <div class="plates" id="plates">${plates.map(p=>`<button class="plate" data-k="${p.k}" aria-label="${p.n}"><span class="n"></span><img src="${p.src}" alt="Lasagna at ${p.n}"><span>${p.n}</span></button>`).join('')}</div>
+      <p id="lnote" style="min-height:1.4em;font-weight:700;color:#B3261E"></p>
+      <div id="rew"></div>
+    </div></section>`;
+  const reward = ()=>{
+    document.getElementById('plates').style.pointerEvents='none';
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      ${S.lasagnaAnswer?`<p style="margin:0 0 14px;font-weight:700">${({yes:"You said yes. He is going to be unbearable about this. 😄🍝",some:"Only sometimes. He'll take it… probably every day, though. 😏",no:"Fair enough. He'll stick to Melu. (He'll still think it.) 😂"})[S.lasagnaAnswer]}</p>`:''}
+      <span class="stamp">MEMBERSHIP APPROVED</span>
+      <p style="margin-top:12px">Welcome to the club. Your membership card has one letter on it:</p>
+      <p class="big-letter" style="color:#B3261E">I</p>
+      ${S.words.I?'' : wordHTML('I','Type it to add it to your message:')}
+      <div id="clue1">${S.words.I?clueHTML('bowling',"Somewhere we're officially tied, 1 to 1. 🎳"):''}</div></div>`;
+    if(S.words.I) armClue('bowling');
+    else bindWord('I',()=>{ document.getElementById('clue1').innerHTML=clueHTML('bowling',"Somewhere we're officially tied, 1 to 1. 🎳"); armClue('bowling'); });
+  };
+  const ask = ()=>{
+    document.getElementById('plates').style.pointerEvents='none';
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      <p style="margin:0 0 4px"><b>One last question before your membership is approved.</b></p>
+      <p style="font-family:var(--display);font-size:1.5rem;line-height:1.25;margin:6px 0 14px">Can I call you my Lasagna? 🍝</p>
+      <div style="display:grid;gap:8px">
+        <button class="ans" data-a="yes" style="height:48px;border:none;border-radius:12px;background:#B3261E;color:#fff;font-weight:800;cursor:pointer">Yes 🍝</button>
+        <button class="ans" data-a="some" style="height:48px;border:2px solid #B3261E;border-radius:12px;background:#fff;color:#B3261E;font-weight:800;cursor:pointer">Only sometimes 😏</button>
+        <button class="ans" data-a="no" style="height:48px;border:2px solid #E9D8C4;border-radius:12px;background:#fff;color:#3A1A10;font-weight:700;cursor:pointer">No way 😂</button>
+      </div></div>`;
+    document.querySelectorAll('.ans').forEach(b=>b.onclick=()=>{ S.lasagnaAnswer=b.dataset.a; save(); buzz([20,40,20]); reward(); });
+  };
+  if(S.done.lasagna) return S.lasagnaAnswer ? reward() : ask();
+  let picked=[], fails=0;
+  page.querySelectorAll('.plate').forEach(b=>b.onclick=()=>{
+    if(picked.includes(b.dataset.k)) return;
+    picked.push(b.dataset.k); b.classList.add('picked'); b.querySelector('.n').textContent=picked.length; buzz(15);
+    if(picked.length===3){
+      if(picked.join()===ORDER.join()){ S.done.lasagna=true; save(); document.getElementById('lnote').textContent='Correct order. 🍝'; setTimeout(ask,500); }
+      else{
+        fails++;
+        document.getElementById('lnote').textContent = fails<2 ? "Close, but our founder remembers every bite. Try again." : "Hint: Keteme was first, back in September.";
+        shake(document.getElementById('plates'));
+        setTimeout(()=>{ picked=[]; page.querySelectorAll('.plate').forEach(p=>{p.classList.remove('picked');p.querySelector('.n').textContent='';}); },700);
+      }
+    }
+  });
+},
+
+bowling(){
+  const PINS = [{x:20,l:'V'},{x:40,l:'L'},{x:60,l:'E'},{x:80,l:'O'}];
+  page.innerHTML = `<section class="site s-bowling"><div class="site-in">
+    <h1>Tie Breaker Lanes</h1>
+    <div class="score"><div>Efrem<b>1</b></div><div>Melat<b id="msc">1</b></div></div>
+    <div class="strip" style="margin:0 0 6px"><video src="media/bowling-1.mp4" muted autoplay loop playsinline></video><img src="media/gast2-lane.jpg" alt="Our bowling lane"></div>
+    <p class="swp" style="color:#B4AEFF">Match footage from June 20 · Our lane on October 14</p>
+    <p style="text-align:center">Last time I won. This time you won. Knock down all four pins to break the tie.</p>
+    <div class="lane" id="lane">
+      ${PINS.map((p,i)=>`<div class="ltr" id="lt${i}" style="left:${p.x}%">${p.l}</div><div class="pin" id="pn${i}" style="left:${p.x}%"></div>`).join('')}
+      <div class="aim" id="aim" style="left:50%"></div><div class="ball" id="ball" style="left:50%"></div>
+    </div>
+    <button class="bowl" id="bowl">Bowl 🎳</button>
+    <p class="bnote" id="bnote">Tap “Bowl” when the light lines up with a pin.</p>
+    <div id="rew"></div></div></section>`;
+  page.querySelectorAll('video').forEach(v=>{ v.muted=true; const pr=v.play(); if(pr&&pr.catch) pr.catch(()=>{}); });
+  const down = new Set(), aim=document.getElementById('aim'), ball=document.getElementById('ball'), btn=document.getElementById('bowl'), note=document.getElementById('bnote');
+  const finalLink=()=>`<div class="clue"><p class="c-k">Your message is complete</p><p class="c-t">Read all four words together.</p><button class="go" id="tofinal" style="font-size:1.05rem;font-weight:700">Open the last page →</button></div>`;
+  const bindFinal=()=>{ S.unlocked=idxOf('final'); save(); document.getElementById('tofinal').onclick=()=>go('final'); };
+  const reward = ()=>{
+    btn.hidden=true; note.textContent='';
+    document.getElementById('msc').textContent='2';
+    document.getElementById('rew').innerHTML = `<div class="reward">
+      <p><b>Final score: Melat 2, Efrem 1.</b> Fine. You win. 😤</p>
+      <p>The pins were hiding the last word, but they fell in the wrong order.</p>
+      ${S.words.LOVE?'':wordHTML('LOVE','Unscramble them and type the word:')}
+      <div id="clue2">${S.words.LOVE?finalLink():''}</div></div>`;
+    if(S.words.LOVE) bindFinal();
+    else bindWord('LOVE',()=>{ document.getElementById('clue2').innerHTML=finalLink(); bindFinal(); });
+  };
+  if(S.done.bowling){ PINS.forEach((p,i)=>{document.getElementById('pn'+i).classList.add('down');document.getElementById('lt'+i).classList.add('show');}); aim.hidden=true; ball.hidden=true; return reward(); }
+  let t0=performance.now(), x=50, rolling=false, misses=0, raf;
+  const tick = now=>{ if(!document.body.contains(aim)) return; if(!rolling){ x = 50 + 40*Math.sin((now-t0)/520); aim.style.left=x+'%'; ball.style.left=x+'%'; } raf=requestAnimationFrame(tick); };
+  raf=requestAnimationFrame(tick);
+  btn.onclick=()=>{
+    if(rolling) return; rolling=true; btn.disabled=true;
+    const tx=x; ball.classList.add('roll'); ball.style.bottom='290px';
+    setTimeout(()=>{
+      const radius = misses>=3 ? 15 : 10;
+      let hitAny=false;
+      PINS.forEach((p,i)=>{ if(!down.has(i) && Math.abs(p.x-tx)<=radius){ down.add(i); hitAny=true;
+        document.getElementById('pn'+i).classList.add('down'); document.getElementById('lt'+i).classList.add('show'); } });
+      if(hitAny){ buzz([20,40,20]); misses=0; note.textContent = down.size<4 ? ['Strike-ish! 🎉','Nice shot!','Look at you go!'][down.size%3] : 'All four down!'; }
+      else { misses++; note.textContent = misses>=3 ? 'Gutter ball 😅 (The pins got a little bigger to help.)' : 'Gutter ball 😅 Try again.'; }
+      setTimeout(()=>{
+        ball.classList.remove('roll'); ball.style.bottom='18px'; rolling=false; btn.disabled=false;
+        if(down.size===4){ cancelAnimationFrame(raf); aim.hidden=true; ball.hidden=true; S.done.bowling=true; save(); reward(); }
+      },450);
+    },680);
+  };
+},
+
+final(){
+  paintSlots(true);
+  page.innerHTML = `<section class="site s-final"><div class="site-in">
+    <div class="words"><span class="w1" style="animation-delay:.2s">I</span><span class="w2" style="animation-delay:1.1s">LOVE</span><span class="w3" style="animation-delay:2s">YOU</span><span class="w4" style="animation-delay:2.9s">Melat</span></div>
+    <div class="note" style="animation-delay:4s">
+      <p>You just spelled it out yourself, one website at a time. So now you can't say nobody told you. 😄</p>
+      <p>I love you, Melu. You don't have to say anything back.</p>
+      <p>Now look up. I'm right here.</p>
+      <p class="sig">— Efrem</p>
+    </div>
+    <button class="again" id="again">Start over from the beginning</button></div></section>`;
+  if(!reduced) setTimeout(petals,3200);
+  document.getElementById('again').onclick=()=>{ S={v:3,unlocked:1,done:{},opened:{},words:{},pieces:{}}; save(); paintSlots(); history=[]; pendingNext=null; go('start',false); };
+}
+};
+
+function petals(){
+  const g=['❤️','💗','🌸','🌹','💕'];
+  for(let i=0;i<60;i++) setTimeout(()=>{
+    const d=document.createElement('div'); d.className='petal'; d.textContent=g[Math.floor(Math.random()*g.length)];
+    d.style.left=Math.random()*100+'vw'; d.style.fontSize=(14+Math.random()*20)+'px'; d.style.animationDuration=(4+Math.random()*3)+'s';
+    document.body.appendChild(d); setTimeout(()=>d.remove(),7500);
+  }, i*90);
+}
+
+paintSlots();
+go('start',false);
+</script>
+
+</body>
+</html>
