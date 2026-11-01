@@ -20,15 +20,10 @@
 @font-face{font-family:"Fraunces";src:url(fonts/Fraunces-Italic.ttf) format("truetype");font-weight:100 900;font-style:italic;font-display:swap}
 @font-face{font-family:"Monoton";src:url(fonts/Monoton.ttf) format("truetype");font-display:swap}
 @font-face{font-family:"Caveat";src:url(fonts/Caveat.ttf) format("truetype");font-weight:400 700;font-display:swap}
-/* same base the artifact viewer provides */
-:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html,body{margin:0}
-body{font-size:14px;font-family:system-ui,-apple-system,sans-serif;-webkit-text-size-adjust:100%}
-img{max-width:100%}
-[hidden]{display:none!important}
-html{-webkit-tap-highlight-color:transparent}
+@font-face{font-family:"IM Fell English";src:url(fonts/IMFeENrm28P.ttf) format("truetype");font-style:normal;font-display:swap}
+@font-face{font-family:"IM Fell English";src:url(fonts/IMFeENit28P.ttf) format("truetype");font-style:italic;font-display:swap}
+@font-face{font-family:"UnifrakturMaguntia";src:url(fonts/UnifrakturMaguntia.ttf) format("truetype");font-display:swap}
 </style>
-
 <style>
 /* Layout: a little browser — sticky chrome (address bar + message slots) over one "website" at a time */
 :root{
@@ -273,6 +268,53 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 @keyframes wordin{to{opacity:1;transform:none}}
 .note{background:#FFF6EE;color:#2E1A22;border-radius:6px;padding:22px 20px 20px;text-align:left;font-family:var(--hand);font-size:1.55rem;line-height:1.35;transform:rotate(-1deg);box-shadow:0 14px 30px rgba(0,0,0,.35);opacity:0;animation:wordin 1s ease-out forwards}
 .note p{margin:0 0 12px}
+/* ---------- the burnt letter ---------- */
+.scroll-wrap{margin:4px -4px 0;opacity:0;animation:unroll 1.4s cubic-bezier(.2,.8,.2,1) forwards;
+  filter:drop-shadow(0 0 1.2px #1a0900) drop-shadow(0 0 2px rgba(20,6,0,.9)) drop-shadow(0 0 9px rgba(255,120,30,.45)) drop-shadow(0 18px 26px rgba(0,0,0,.55))}
+@keyframes unroll{from{opacity:0;transform:translateY(24px) scaleY(.85)}to{opacity:1;transform:none}}
+.scroll{position:relative;text-align:left;padding:46px 26px 50px;color:#2B1607;
+  font-family:"IM Fell English",Georgia,"Times New Roman",serif;font-size:1.2rem;line-height:1.62;
+  background-color:#E6CF9E;
+  background-image:
+    radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 48%,rgba(120,62,12,.38) 78%,rgba(58,22,2,.82) 96%,rgba(25,8,0,.95) 100%),
+    radial-gradient(circle at 14% 22%,rgba(95,48,8,.30),transparent 7%),
+    radial-gradient(circle at 82% 38%,rgba(95,48,8,.26),transparent 6%),
+    radial-gradient(circle at 30% 71%,rgba(110,55,10,.22),transparent 8%),
+    radial-gradient(circle at 74% 88%,rgba(80,38,5,.32),transparent 7%),
+    radial-gradient(circle at 92% 8%,rgba(40,15,0,.55),transparent 9%),
+    radial-gradient(circle at 6% 94%,rgba(40,15,0,.5),transparent 10%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .2 0 0 0 0 .05 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(175deg,#EAD6A8,#DDBF86 60%,#D2AF72)}
+.scroll::before{content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 28px 6px rgba(60,24,2,.55),inset 0 0 60px 18px rgba(120,60,10,.25)}
+.scroll p{margin:0 0 16px;opacity:0;animation:inkin 1.6s ease-out forwards;position:relative}
+@keyframes inkin{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:blur(0)}}
+.scroll .salute{font-style:italic;font-size:1.32rem}
+.scroll .drop::first-letter{font-family:"UnifrakturMaguntia","IM Fell English",serif;float:left;font-size:3.6em;line-height:.82;
+  margin:6px 10px 0 0;color:#7A1414;text-shadow:0 1px 0 rgba(255,230,190,.4)}
+.scroll .ornament{text-align:center;color:#7A1414;font-size:1.3rem;letter-spacing:.6em;margin:4px 0 14px;opacity:0;animation:inkin 1.6s ease-out forwards}
+.scroll .ily{text-align:center;margin:30px 0 10px;font-family:"IM Fell English",Georgia,serif;
+  font-size:clamp(2.6rem,13vw,3.5rem);line-height:1.05;color:#7A1414;letter-spacing:.06em;
+  text-shadow:0 0 10px rgba(255,140,40,.45),0 1px 0 rgba(255,230,190,.5)}
+.scroll p.ily{animation:inkin 2.2s ease-out forwards,ember 3s ease-in-out infinite}
+@keyframes ember{0%,100%{text-shadow:0 0 10px rgba(255,140,40,.45),0 1px 0 rgba(255,230,190,.5)}50%{text-shadow:0 0 22px rgba(255,120,30,.75),0 1px 0 rgba(255,230,190,.5)}}
+.scroll .sig{text-align:right;font-style:italic;font-size:1.35rem;margin:18px 0 0}
+.song{margin:26px auto 0;max-width:420px;display:flex;align-items:center;gap:16px;text-align:left;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,209,227,.22);border-radius:20px;padding:16px 16px 16px 14px;
+  opacity:0;animation:wordin 1s ease-out forwards}
+.vinyl{flex:0 0 78px;height:78px;border-radius:50%;position:relative;
+  background:repeating-radial-gradient(circle at 50% 50%,#111 0 2px,#1d1d1d 2px 4px);box-shadow:0 6px 16px rgba(0,0,0,.45);animation:spin 3.2s linear infinite}
+.vinyl::after{content:"♥";position:absolute;inset:27px;border-radius:50%;background:#F0609A;color:#2A0E1A;display:grid;place-items:center;font-size:.9rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.song .k{margin:0;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:#E7B6CB}
+.song .t{margin:2px 0 0;font-family:var(--display);font-size:1.5rem;font-weight:800;color:#FCE9F1;line-height:1.1}
+.song .a{margin:0 0 10px;color:#FFD1E3;font-size:.95rem}
+.song .links{display:flex;flex-wrap:wrap;gap:6px}
+.song .links a{font-family:var(--ui);font-weight:800;font-size:.8rem;text-decoration:none;color:#2A0E1A;background:#FCE9F1;border-radius:20px;padding:7px 12px}
+.song .links a:first-child{background:#F0609A;color:#fff}
+.song .links a:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.vinyl{animation:none}.song{opacity:1}}
+@media (prefers-reduced-motion: reduce){.scroll-wrap,.scroll p,.scroll .ornament{opacity:1;filter:none}}
 .note .sig{text-align:right;font-weight:700;margin:0}
 .again{margin-top:22px;background:none;border:none;color:#E7B6CB;text-decoration:underline;cursor:pointer;font-size:.9rem}
 
@@ -748,19 +790,51 @@ bowling(){
 
 final(){
   paintSlots(true);
+  const LETTER = [
+    {c:'salute drop', t:"Hey Melu, Melat, Meluye, how are you? 😁"},
+    {t:"I don’t know how to start, ewnet. You were just a random girl last year, eko 😁, and suddenly you became the person I care about the most in the world, and my favorite person."},
+    {t:"I always knew I liked you betam, gn day by day by day by day I started missing you every day, wanting to talk to you all the time, not wanting to let you go after every time we meet, caring about your days more than mine, caring about your health more than mine. And demo, the way you make me feel is goated 😁."},
+    {t:"Yene enat, I don’t usually feel this way, ewnet. I always want to re-return to you after every date, ewnet. Ena I wanted to do that, kelekelshign enji 😁. Bich, for me that is one of the purest forms of love: when you want to return to them after the date. Ena I don’t think I have ever returned to anyone else."},
+    {t:"Meluye, I remember telling you love is complicated and you can’t explain it using words, but when there are a lot of emotions coming to you about one person, you just know. For me, Meluye, you are that person."},
+    {t:"After every night, before saying good night, I started wanting to say one thing. But I needed to say it to you in person, and that is:"}
+  ];
+  const STEP = reduced ? 0 : 1.1, START = 4.4;
+  let d = START;
+  const paras = LETTER.map(p=>{ const s=`<p class="${p.c||''}" style="animation-delay:${d.toFixed(1)}s">${p.t}</p>`; d+=STEP; return s; }).join('');
+  const ornAt = d + 0.6, ilyAt = d + 2.2, sigAt = ilyAt + 1.6;
   page.innerHTML = `<section class="site s-final"><div class="site-in">
     <div class="words"><span class="w1" style="animation-delay:.2s">I</span><span class="w2" style="animation-delay:1.1s">LOVE</span><span class="w3" style="animation-delay:2s">YOU</span><span class="w4" style="animation-delay:2.9s">Melat</span></div>
-    <div class="note" style="animation-delay:4s">
-      <p>You just spelled it out yourself, one website at a time. So now you can't say nobody told you. 😄</p>
-      <p>I love you, Melu. You don't have to say anything back.</p>
-      <p>Now look up. I'm right here.</p>
-      <p class="sig">— Efrem</p>
+    <div class="scroll-wrap" style="animation-delay:3.6s"><article class="scroll" id="scroll" aria-label="A letter from Efrem">
+      ${paras}
+      <div class="ornament" style="animation-delay:${ornAt.toFixed(1)}s">✦ ✦ ✦</div>
+      <p class="ily" id="ily" style="animation-delay:${ilyAt.toFixed(1)}s, ${(ilyAt+2.2).toFixed(1)}s">I LOVE YOU.</p>
+      <p class="sig" style="animation-delay:${sigAt.toFixed(1)}s">— Efrem</p>
+    </article></div>
+    <div class="song" style="animation-delay:${(sigAt+1.4).toFixed(1)}s">
+      <div class="vinyl" aria-hidden="true"></div>
+      <div><p class="k">Play our song</p><p class="t">Raindance</p><p class="a">Dave ft. Tems</p>
+        <div class="links">
+          <a href="https://music.apple.com/search?term=Raindance%20Dave%20Tems" target="_blank" rel="noopener">Apple Music</a>
+          <a href="https://open.spotify.com/search/Raindance%20Dave%20Tems" target="_blank" rel="noopener">Spotify</a>
+          <a href="https://www.youtube.com/results?search_query=Dave+Raindance+ft+Tems+official" target="_blank" rel="noopener">YouTube</a>
+        </div></div>
     </div>
     <button class="again" id="again">Start over from the beginning</button></div></section>`;
-  if(!reduced) setTimeout(petals,3200);
+  burnEdges(document.getElementById('scroll'));
+  setTimeout(()=>{ if(!document.getElementById('ily')) return; buzz([40,80,40,80,120]); if(!reduced) petals(); }, ilyAt*1000);
   document.getElementById('again').onclick=()=>{ S={v:3,unlocked:1,done:{},opened:{},words:{},pieces:{}}; save(); paintSlots(); history=[]; pendingNext=null; go('start',false); };
 }
 };
+
+/* Ragged, burnt edges: a random polygon hugging the paper's border. */
+function burnEdges(el){
+  const r=(a,b)=>a+Math.random()*(b-a), pts=[], N=34;
+  for(let i=0;i<=N;i++) pts.push(`${(i/N*100).toFixed(2)}% ${r(0,16).toFixed(1)}px`);
+  for(let i=1;i<=N;i++) pts.push(`calc(100% - ${r(0,14).toFixed(1)}px) ${(i/N*100).toFixed(2)}%`);
+  for(let i=N-1;i>=0;i--) pts.push(`${(i/N*100).toFixed(2)}% calc(100% - ${r(0,18).toFixed(1)}px)`);
+  for(let i=N-1;i>=1;i--) pts.push(`${r(0,14).toFixed(1)}px ${(i/N*100).toFixed(2)}%`);
+  const cp=`polygon(${pts.join(',')})`; el.style.clipPath=cp; el.style.webkitClipPath=cp;
+}
 
 function petals(){
   const g=['❤️','💗','🌸','🌹','💕'];
