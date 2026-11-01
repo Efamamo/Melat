@@ -798,13 +798,12 @@ final(){
     {t:"Meluye, I remember telling you love is complicated and you can’t explain it using words, but when there are a lot of emotions coming to you about one person, you just know. For me, Meluye, you are that person."},
     {t:"After every night, before saying good night, I started wanting to say one thing. But I needed to say it to you in person, and that is:"}
   ];
-  const STEP = reduced ? 0 : 1.1, START = 4.4;
+  const STEP = reduced ? 0 : 1.1, START = 1.2;
   let d = START;
   const paras = LETTER.map(p=>{ const s=`<p class="${p.c||''}" style="animation-delay:${d.toFixed(1)}s">${p.t}</p>`; d+=STEP; return s; }).join('');
   const ornAt = d + 0.6, ilyAt = d + 2.2, sigAt = ilyAt + 1.6;
   page.innerHTML = `<section class="site s-final"><div class="site-in">
-    <div class="words"><span class="w1" style="animation-delay:.2s">I</span><span class="w2" style="animation-delay:1.1s">LOVE</span><span class="w3" style="animation-delay:2s">YOU</span><span class="w4" style="animation-delay:2.9s">Melat</span></div>
-    <div class="scroll-wrap" style="animation-delay:3.6s"><article class="scroll" id="scroll" aria-label="A letter from Efrem">
+    <div class="scroll-wrap" style="animation-delay:.3s"><article class="scroll" id="scroll" aria-label="A letter from Efrem">
       ${paras}
       <div class="ornament" style="animation-delay:${ornAt.toFixed(1)}s">✦ ✦ ✦</div>
       <p class="ily" id="ily" style="animation-delay:${ilyAt.toFixed(1)}s, ${(ilyAt+2.2).toFixed(1)}s">I LOVE YOU.</p>
